@@ -7,6 +7,9 @@ from ctypes import windll
 from pygrabber.dshow_graph import FilterGraph
 import sv_ttk
 
+CONST_MIN_WIDTH = 800
+CONST_MIN_HEIGHT = 600
+
 # Function to capture video frames and update the Tkinter window
 def update_frame():
     ret, frame = cap.read()
@@ -19,7 +22,7 @@ def update_frame():
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
         else:
-            w, h = 800, 600  # Fallback to default if webcam is not accessible
+            w, h = CONST_MIN_WIDTH, CONST_MIN_HEIGHT  # Fallback to default if webcam is not accessible
 
         # Video ratio
         aspect_ratio = w / h
@@ -107,7 +110,7 @@ if cap.isOpened():
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) + 45
 else:
-    width, height = 800, 645  # Fallback to default if webcam is not accessible
+    width, height = CONST_MIN_WIDTH, CONST_MIN_HEIGHT + 45  # Fallback to default if webcam is not accessible
 
 # Create the main application window
 root = tk.Tk()
