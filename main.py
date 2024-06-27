@@ -11,14 +11,41 @@ import sv_ttk
 def update_frame():
     ret, frame = cap.read()
     if ret:
-        # Convert the frame to RGB format
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        # Convert the frame to an ImageTk object
-        img = Image.fromarray(frame)
-        imgtk = ImageTk.PhotoImage(image=img)
-        # Update the label with the new frame
-        lbl_video.imgtk = imgtk
-        lbl_video.config(image=imgtk)
+        width = lbl_video.winfo_width()
+        height = lbl_video.winfo_height()
+
+        # Get the default webcam resolution
+        if cap.isOpened():
+            w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        else:
+            w, h = 800, 600  # Fallback to default if webcam is not accessible
+
+        # Video ratio
+        aspect_ratio = w / h
+
+        # Resize frame preserving the aspect ratio
+        if width / height < aspect_ratio:
+            new_width = width
+            new_height = int(width / aspect_ratio)
+        else:
+            new_width = int(height * aspect_ratio)
+            new_height = height
+
+        # Ensure the new dimensions are valid
+        if new_width > 0 and new_height > 0:
+            frame = cv2.resize(frame, (new_width, new_height))
+            # Convert the frame to RGB format
+            frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            # Convert the frame to an ImageTk object
+            img = Image.fromarray(frame)
+            imgtk = ImageTk.PhotoImage(image=img)
+            # Update the label with the new frame
+            lbl_video.imgtk = imgtk
+            lbl_video.config(image=imgtk)
+        else:
+            print("Invalid dimensions for resizing, skipping frame update")
+
     # Call this function again after 10ms
     lbl_video.after(10, update_frame)
 
@@ -72,21 +99,6 @@ def update_camera_options():
             variable.set(camera_names[0])
     root.after(1000, update_camera_options)
 
-# Function to maintain aspect ratio
-def maintain_aspect_ratio(event):
-    # Get the size of the frame
-    w, h = event.width, event.height
-    # Calculate the aspect ratio of the original video
-    aspect_ratio = width / height
-    if w / h > aspect_ratio:
-        new_width = int(h * aspect_ratio)
-        new_height = h
-    else:
-        new_width = w
-        new_height = int(w / aspect_ratio)
-    # Resize the label
-    lbl_video.config(width=new_width, height=new_height)
-
 # Capture video from the default webcam (device 0)
 cap = cv2.VideoCapture(0)
 
@@ -122,7 +134,6 @@ cam_option.pack(side=tk.LEFT, padx=5)
 style = ttk.Style()
 style.configure('TCombobox', padding=(10, 0, 10, 0))  # Adjust padding as needed
 
-
 # Create a button to toggle the theme
 button = ttk.Button(frame_controls, text="Toggle theme", command=sv_ttk.toggle_theme)
 button.pack(side=tk.LEFT, padx=5)
@@ -130,9 +141,6 @@ button.pack(side=tk.LEFT, padx=5)
 # Create a label to display the video frames
 lbl_video = Label(root)
 lbl_video.pack(fill=tk.BOTH, expand=True)
-
-# Bind the resize event to maintain the aspect ratio
-lbl_video.bind("<Configure>", maintain_aspect_ratio)
 
 # Start updating the camera options
 update_camera_options()
