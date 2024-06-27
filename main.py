@@ -8,6 +8,7 @@ import sv_ttk
 
 CONST_MIN_WIDTH = 800
 CONST_MIN_HEIGHT = 600
+CONST_CONTROLS_HEIGHT = 42
 
 # Function to capture video frames and update the Tkinter window
 def update_frame():
@@ -105,9 +106,9 @@ cap = cv2.VideoCapture(0)
 # Get the default webcam resolution
 if cap.isOpened():
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) + 45
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT)) + CONST_CONTROLS_HEIGHT
 else:
-    width, height = CONST_MIN_WIDTH, CONST_MIN_HEIGHT + 45  # Fallback to default if webcam is not accessible
+    width, height = CONST_MIN_WIDTH, CONST_MIN_HEIGHT + CONST_CONTROLS_HEIGHT  # Fallback to default if webcam is not accessible
 
 # Create the main application window
 root = tk.Tk()
@@ -120,7 +121,7 @@ root.minsize(width, height)
 
 # Create a frame to hold the dropdown and button
 frame_controls = ttk.Frame(root)
-frame_controls.pack(fill=tk.X, pady=(10, 5))
+frame_controls.pack(fill=tk.X, pady=(6, 5))
 
 # Create a Combobox to select the camera
 variable = tk.StringVar(root)
