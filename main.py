@@ -2,8 +2,7 @@ import tkinter as tk
 from tkinter import ttk, Label
 import cv2
 from PIL import Image, ImageTk
-import ctypes
-from ctypes import windll
+import winreg
 from pygrabber.dshow_graph import FilterGraph
 import sv_ttk
 
@@ -67,11 +66,9 @@ def is_dark_mode():
         # Check if the system is in dark mode
         reg_key = r'SOFTWARE\Microsoft\Windows\CurrentVersion\Themes\Personalize'
         reg_value = 'AppsUseLightTheme'
-        value = ctypes.c_uint32()
-        size = ctypes.sizeof(value)
-        status = windll.advapi32.RegGetValueW(
-            windll.HKEY_CURRENT_USER, reg_key, reg_value, 2, ctypes.byref(value), ctypes.byref(size))
-        return value.value == 0  # 0 means dark mode, 1 means light mode
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, reg_key) as key:
+            value, regtype = winreg.QueryValueEx(key, reg_value)
+            return value == 0  # 0 means dark mode, 1 means light mode
     except Exception as e:
         print(f"Error checking system mode: {e}")
         return False  # Fallback to default
