@@ -112,7 +112,7 @@ else:
 
 # Create the main application window
 root = tk.Tk()
-root.title("Seeker")
+root.title("ASAM")
 root.geometry(f"{width}x{height}")
 root.resizable(True, True)
 
