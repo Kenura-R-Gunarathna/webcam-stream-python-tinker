@@ -5,13 +5,23 @@ from PIL import Image, ImageTk
 import winreg
 from pygrabber.dshow_graph import FilterGraph
 import sv_ttk
+import win32con
+import win32gui
+import win32api
+from ctypes import windll, create_unicode_buffer, sizeof, byref, c_wchar_p, Structure, c_ulong
 
 CONST_MIN_WIDTH = 800
 CONST_MIN_HEIGHT = 600
-CONST_CONTROLS_HEIGHT = 42
+CONST_CONTROLS_HEIGHT = 40
+
+# Flag to control the update_frame loop
+updating_frame = False
 
 # Function to capture video frames and update the Tkinter window
 def update_frame():
+    global updating_frame
+    if not updating_frame:
+        return
     ret, frame = cap.read()
     if ret:
         width = lbl_video.winfo_width()
@@ -54,12 +64,17 @@ def update_frame():
 
 # Function to change the camera based on the selected option
 def change_camera(*args):
-    global cap
+    global cap, updating_frame
     cam_index = camera_names.index(variable.get())
     # Release the previous camera
-    cap.release()
+    if cap.isOpened():
+        cap.release()
     # Open the new camera
     cap = cv2.VideoCapture(cam_index)
+    # Ensure the update_frame loop is running
+    if not updating_frame:
+        updating_frame = True
+        update_frame()
 
 # Function to detect system mode
 def is_dark_mode():
@@ -92,13 +107,33 @@ def update_camera_options():
     new_camera_names = get_camera_names()
     if new_camera_names != camera_names:
         camera_names = new_camera_names
-        menu = cam_option['menu']
-        menu.delete(0, 'end')
-        for name in camera_names:
-            menu.add_command(label=name, command=tk._setit(variable, name))
+        cam_option['values'] = camera_names
         if variable.get() not in camera_names:
             variable.set(camera_names[0])
-    root.after(1000, update_camera_options)
+
+# Structure to register for device notifications
+class DEV_BROADCAST_DEVICEINTERFACE(Structure):
+    _fields_ = [("dbcc_size", c_ulong),
+                ("dbcc_devicetype", c_ulong),
+                ("dbcc_reserved", c_ulong),
+                ("dbcc_classguid", c_wchar_p),
+                ("dbcc_name", c_wchar_p)]
+
+# Function to handle device change notifications
+def device_change_handler(hwnd, msg, wparam, lparam):
+    if wparam in [win32con.DBT_DEVICEARRIVAL, win32con.DBT_DEVICEREMOVECOMPLETE]:
+        update_camera_options()
+    return 0
+
+# Function to register device notifications
+def register_device_notification(hwnd):
+    dbi = DEV_BROADCAST_DEVICEINTERFACE()
+    dbi.dbcc_size = sizeof(DEV_BROADCAST_DEVICEINTERFACE)
+    dbi.dbcc_devicetype = win32con.DBT_DEVTYP_DEVICEINTERFACE
+    dbi.dbcc_classguid = "{A5DCBF10-6530-11D2-901F-00C04FB951ED}"
+    hdn = windll.user32.RegisterDeviceNotificationW(hwnd, byref(dbi), win32con.DEVICE_NOTIFY_WINDOW_HANDLE)
+    if not hdn:
+        raise RuntimeError("Failed to register device notification")
 
 # Capture video from the default webcam (device 0)
 cap = cv2.VideoCapture(0)
@@ -143,14 +178,27 @@ button.pack(side=tk.LEFT, padx=5)
 lbl_video = Label(root)
 lbl_video.pack(fill=tk.BOTH, expand=True)
 
-# Start updating the camera options
-update_camera_options()
-
-# Start updating the frames
-update_frame()
+# Bind the combobox selection change to the change_camera function
+variable.trace_add('write', change_camera)
 
 # Set theme based on system mode
 set_theme()
+
+# Register the device change handler
+message_map = {
+    win32con.WM_DEVICECHANGE: device_change_handler
+}
+wc = win32gui.WNDCLASS()
+wc.lpfnWndProc = message_map
+wc.lpszClassName = 'DeviceChangeHandler'
+wc.hInstance = win32api.GetModuleHandle(None)
+class_atom = win32gui.RegisterClass(wc)
+hwnd = win32gui.CreateWindow(class_atom, 'DeviceChangeHandler', 0, 0, 0, 0, 0, 0, 0, wc.hInstance, None)
+register_device_notification(hwnd)
+
+# Start updating the frames
+updating_frame = True
+update_frame()
 
 # Start the Tkinter event loop
 root.mainloop()
